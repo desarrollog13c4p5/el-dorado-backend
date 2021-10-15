@@ -100,49 +100,64 @@ router.get('/prestamo/:id', async (req, res) => {
 // Get con todos los documentos
 router.get('/prestamo', async (req, res) => {
   try {
-    const libros = await Libro.find();
     let logicaPrestamos = [];
 
-    for (const libro of libros) {
-      let temp_prestamo = '';
-      let temp_usuario = '';
+    // const libros = await Libro.find({}, '_id nombre_libro autor id_prestamo');
+    // const prestamos = await Prestamo.find({}, 'fecha_entrega id_usuario');
+    // const usuarios = await Usuario.find({}, 'nombre apellido');
 
-      if (libro.id_prestamo == null) {
-        temp_prestamo = 'Ninguno'
-      } else {
-        // Trae fecha e id_usuario
-        await Prestamo.findOne({ _id: libro.id_prestamo })
-          .then((res) => {
-            temp_prestamo = res.fecha_entrega;
-            console.log(temp_prestamo);
-            temp_usuario = res.id_usuario;
-          })
-          .catch((error) => {
-            temp_prestamo = 'Error'
-            console.log(error);
+    // for (const libro of libros) {
+    //   if (libro.id_prestamo == null) {
+    //     logicaPrestamos.push({
+    //       _id: libro._id,
+    //       libro: libro.nombre_libro + ' - ' + libro.autor,
+    //       usuario: '',
+    //       prestamo: 'Ninguno',
+    //     })       
+    //   } else {
+    //     // Trae fecha e id_usuario
+    //     const prest = prestamos.find(item => item._id == libro.id_prestamo);
+    //     // Trae nombre y apellido de Usuario
+    //     const usua = usuarios.find(item => item._id == prest.id_usuario);
+
+    //     logicaPrestamos.push({
+    //       _id: libro._id,
+    //       libro: libro.nombre_libro + ' - ' + libro.autor,
+    //       usuario: usua.nombre + ' ' + usua.apellido,
+    //       prestamo: prest.fecha_entrega,
+    //     });
+    //   }
+
+    // Para mejorar el rendimiento se resuelven las promesas al tiempo (en paralelo)
+    const libros = Libro.find({}, '_id nombre_libro autor id_prestamo');
+    const prestamos = Prestamo.find({}, 'fecha_entrega id_usuario');
+    const usuarios = Usuario.find({}, 'nombre apellido');
+    
+    await Promise.all([libros, prestamos, usuarios]).
+    then(values => {
+      for (const libro of values[0]) {
+        if (libro.id_prestamo == null) {
+          logicaPrestamos.push({
+            _id: libro._id,
+            libro: libro.nombre_libro + ' - ' + libro.autor,
+            usuario: '',
+            prestamo: 'Ninguno',
+          })       
+        } else {
+          // Trae fecha e id_usuario
+          const prest = values[1].find(item => item._id == libro.id_prestamo);
+          // Trae nombre y apellido de Usuario
+          const usua = values[2].find(item => item._id == prest.id_usuario);
+
+          logicaPrestamos.push({
+            _id: libro._id,
+            libro: libro.nombre_libro + ' - ' + libro.autor,
+            usuario: usua.nombre + ' ' + usua.apellido,
+            prestamo: prest.fecha_entrega,
           });
-
-        // Trae nombre y apellido de Usuario
-        if (temp_prestamo != 'Error') {
-          await Usuario.findOne({ _id: temp_usuario })
-            .then((res) => {
-              temp_usuario = res.nombre + ' ' + res.apellido;
-              console.log(temp_usuario);
-            })
-            .catch((error) => {
-              temp_prestamo = 'Error'
-              console.log(error);
-            });
         }
-      }
-
-      logicaPrestamos.push({
-        _id: libro._id,
-        libro: libro.nombre_libro + ' - ' + libro.autor,
-        usuario: temp_usuario,
-        prestamo: temp_prestamo,
-      })
-    }
+      }      
+    });
 
     res.json(logicaPrestamos);
 

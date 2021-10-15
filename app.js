@@ -1,7 +1,7 @@
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import path from 'path';
+import path, { dirname } from 'path';
 
 const app = express();
 
@@ -45,19 +45,13 @@ mongoose.connect(cadenaConexion, {useNewUrlParser: true, useUnifiedTopology: tru
   }
 });
 
-
-
 // Middleware
 app.use(morgan('tiny'));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-//app.use(express.static(path.join(__dirname, 'public')));
 
 // Rutas
-/*app.get('/', function (req, res) {
-  res.send('Hello World!');
-});*/
 app.use('/api', require('./routes/usuario'));
 app.use('/api', require('./routes/libro'));
 app.use('/api', require('./routes/prestamo'));
@@ -65,9 +59,15 @@ app.use('/api', require('./routes/prestamo'));
 // Middleware para Vue.js router modo history
 const history = require('connect-history-api-fallback');
 app.use(history());
-app.use(express.static(path.join(__dirname, 'public')));
 
+// Servidor para Frontend (vue build)
+app.use(express.static(__dirname + '/dist'));
+app.get('*', (req, res) => {
+  res.sendFile(__dirname + '/dist/index.html');
+});
+
+// Run Server
 app.set('puerto', process.env.PORT || 3000);
 app.listen(app.get('puerto'), function () {
-  console.log('Example app listening on port'+ app.get('puerto'));
+  console.log('App listening on port '+ app.get('puerto'));
 });
